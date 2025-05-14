@@ -1,0 +1,1 @@
+# auto_crypto_miner_chrome_extension
