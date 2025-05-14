@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "icons": {
+    "16": "images/crypto_miner.png",
+    "32": "images/crypto_miner.png",
+    "48": "images/crypto_miner.png",
+    "128": "images/crypto_miner.png"
+  },
+  "name": "Auto Crypto Miner",
+  "version": "1.0",
+  "description": "Auto Crypto Miner for Daily, Hourly, Minute based checkIn : Schedule automatic mining button clicks.",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage",
+    "alarms"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Auto Crypto Miner"
+  }
+}
