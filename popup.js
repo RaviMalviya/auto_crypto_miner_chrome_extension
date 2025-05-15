@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isRunning = result.isRunning || false;
       const interval = result.interval || 1;
       const targetUrl = result.targetUrl || "https://x365.ai/quantum";
-      const buttonSelector = result.buttonSelector || "button[data-v-b24bcc6d]";
+      const buttonSelector = result.buttonSelector || "CLAIM TOKENS";
 
       intervalInput.value = interval;
       targetUrlInput.value = targetUrl;
