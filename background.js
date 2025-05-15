@@ -1,56 +1,81 @@
 const ALARM_NAME = "auto_miner_alarm";
-let TARGET_URL = "https://x365.ai/quantum"; // Default value
-let BUTTON_SELECTOR = 'button[data-v-b24bcc6d]'; // Default value
+
+const DEFAULT_TARGET_URL = "https://x365.ai/quantum";
+const DEFAULT_BUTTON_SELECTOR = "CLAIM TOKENS";
+
+let targetUrl = DEFAULT_TARGET_URL; // Default value
+let buttonSelector = DEFAULT_BUTTON_SELECTOR; // Default value
+
+let miningClaimInProgress = false; // Flag to track if the button has been clicked
 
 function executeTask() {
   chrome.storage.local.get(["targetUrl", "buttonSelector"], (result) => {
-    TARGET_URL = result.targetUrl || "https://x365.ai/quantum";
-    BUTTON_SELECTOR = result.buttonSelector || 'button[data-v-b24bcc6d]';
+    targetUrl = result.targetUrl || DEFAULT_TARGET_URL;
+    buttonSelector = result.buttonSelector || DEFAULT_BUTTON_SELECTOR;
 
     // Check if a tab with the target URL already exists
-    chrome.tabs.query({ url: TARGET_URL }, (existingTabs) => {
-    if (existingTabs.length > 0) {
-      // Tab already exists, use the first one found
-      const existingTab = existingTabs[0];
-      // Optionally, you might want to focus the existing tab or reload it
-      // For now, we'll just execute the script in it
-      executeScriptInTab(existingTab.id);
-    } else {
-      // No existing tab, create a new one
-      chrome.tabs.create({ url: TARGET_URL, active: false }, (newTab) => {
-        executeScriptInTab(newTab.id);
-      });
-    }
-  });
-}); // Closing bracket for chrome.storage.local.get
+    chrome.tabs.query({ url: targetUrl }, (existingTabs) => {
+      if (existingTabs.length > 0) {
+        // Tab already exists, use the first one found
+        const existingTab = existingTabs[0];
+        // Optionally, you might want to focus the existing tab or reload it
+        // For now, we'll just execute the script in it
+        executeScriptInTab(existingTab.id, () => {
+          miningClaimInProgress = false;
+        });
+      } else {
+        // No existing tab, create a new one
+        chrome.tabs.create({ url: targetUrl, active: false }, (newTab) => {
+          executeScriptInTab(newTab.id, () => {
+            miningClaimInProgress = false;
+          });
+        });
+      }
+    });
+  }); // Closing bracket for chrome.storage.local.get
 }
 
-function executeScriptInTab(tabId) {
-  setTimeout(() => {
-    chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      func: (currentButtonSelector) => {
-        const btn = document.querySelector(currentButtonSelector); // use dynamic selector
-        if (btn) {
-          btn.click();
-          console.log('Button clicked in tab:', tabId);
-          return true; // Indicate button was clicked
-        } else {
-          console.log('Button not found after delay in tab:', tabId);
-          return false; // Indicate button was not found
-        }
-      },
-      args: [BUTTON_SELECTOR] // Pass the selector to the script
-    });
-  }, 10000); // Delay before executing script
+function executeScriptInTab(tabId, completeCallback = null) {
+  chrome.tabs.reload(tabId, {}, () => {
+
+    setTimeout(() => {
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: (currentButtonSelector) => {
+          // Your script logic here
+          let btn = Array.from(document.querySelectorAll("button")).find(el => el.textContent.trim().toLocaleLowerCase() === currentButtonSelector.toLocaleLowerCase());
+          if (btn) {
+            btn.click();
+            console.log('Button clicked in tab:', tabId);
+            return true; // Indicate button was clicked
+          } else {
+            btn = document.querySelector(`button[${currentButtonSelector}]`);
+            if(btn) {
+              btn.click();
+              console.log('Button clicked in tab:', tabId);
+              return true; // Indicate button was clicked
+            } else {
+              console.log('Button not found after delay in tab:', tabId);
+              return false; // Indicate button was not found
+            }
+          }
+        },
+        args: [buttonSelector] // Pass the selector to the script
+      }, (results) => {
+        // Callback in extension context
+        console.log('Script execution result:', results);
+        if (completeCallback) completeCallback();
+      });
+    }, 10000);
+  });// Delay before executing script
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "start") {
     // Save the new targetUrl and buttonSelector from the popup message
-    TARGET_URL = request.targetUrl || TARGET_URL;
-    BUTTON_SELECTOR = request.buttonSelector || BUTTON_SELECTOR;
-    chrome.storage.local.set({ targetUrl: TARGET_URL, buttonSelector: BUTTON_SELECTOR }, () => {
+    targetUrl = request.targetUrl || targetUrl;
+    buttonSelector = request.buttonSelector || buttonSelector;
+    chrome.storage.local.set({ targetUrl: targetUrl, buttonSelector: buttonSelector }, () => {
       console.log('Background: Target URL and Button Selector updated and saved.');
     });
 
@@ -82,7 +107,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === ALARM_NAME) {
+  if (alarm.name === ALARM_NAME && !miningClaimInProgress) {
+    miningClaimInProgress = true;
     console.log("Alarm triggered:", alarm.name);
     executeTask();
   }
